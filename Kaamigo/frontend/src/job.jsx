@@ -1275,4 +1275,8 @@ export default function SafeJobs() {
       <Jobs />
     </ErrorBoundary>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 1d80904 (updates on voice search)
