@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSignUp, useClerk } from "@clerk/clerk-react";
-import { FaGoogle, FaFacebookF, FaApple } from "react-icons/fa";
+import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { auth } from "./firebase";
+import { FaGoogle } from "react-icons/fa";
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -10,8 +11,8 @@ export default function Signup() {
     confirmPassword: "",
   });
   const [showPassword, setShowPassword] = useState(false);
-  const { signUp, setActive, isLoaded } = useSignUp();
-  const clerk = useClerk();
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const togglePassword = () => setShowPassword((prev) => !prev);
@@ -20,36 +21,58 @@ export default function Signup() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSocialClick = async (provider) => {
+  const handleSocialClick = async () => {
+    setError("");
+    setLoading(true);
     try {
-      await clerk.redirectToSignUp({
-        strategy: `oauth_${provider}`,
-        redirectUrl: "/",
-      });
+      const authProvider = new GoogleAuthProvider();
+      await signInWithPopup(auth, authProvider);
+      navigate("/explore/profile");
     } catch (err) {
       console.error("Social login error:", err);
+      setError("Social login failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isLoaded) return;
+    setError("");
+    setLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      setLoading(false);
       return;
     }
 
     try {
-      const result = await signUp.create({
-        emailAddress: formData.email,
-        password: formData.password,
-      });
-      await setActive({ session: result.createdSessionId });
-      navigate("/");
+      await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      navigate("/explore/profile");
     } catch (err) {
       console.error("Signup error:", err);
-      alert(err.errors?.[0]?.message || "Signup failed");
+      switch (err.code) {
+        case "auth/email-already-in-use":
+          setError("This email is already registered");
+          break;
+        case "auth/invalid-email":
+          setError("Invalid email address");
+          break;
+        case "auth/weak-password":
+          setError("Password is too weak");
+          break;
+        default:
+          setError("Signup failed. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -71,25 +94,12 @@ export default function Signup() {
 
           <div className="space-y-3 mb-6">
             <button
-              onClick={() => handleSocialClick("google")}
-              className="w-full flex items-center justify-center gap-2 border border-gray-300 p-3 rounded-lg hover:bg-gray-100 transition"
+              onClick={handleSocialClick}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 border border-gray-300 p-3 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FaGoogle className="text-red-500 text-lg" />
               <span className="text-sm">Sign up with Google</span>
-            </button>
-            <button
-              onClick={() => handleSocialClick("facebook")}
-              className="w-full flex items-center justify-center gap-2 border border-gray-300 p-3 rounded-lg hover:bg-gray-100 transition"
-            >
-              <FaFacebookF className="text-blue-600 text-lg" />
-              <span className="text-sm">Sign up with Facebook</span>
-            </button>
-            <button
-              onClick={() => handleSocialClick("apple")}
-              className="w-full flex items-center justify-center gap-2 border border-gray-300 p-3 rounded-lg hover:bg-gray-100 transition"
-            >
-              <FaApple className="text-black text-lg" />
-              <span className="text-sm">Sign up with Apple</span>
             </button>
           </div>
 
@@ -107,7 +117,8 @@ export default function Signup() {
               placeholder="example.email@gmail.com"
               value={formData.email}
               onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400"
+              disabled={loading}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 disabled:opacity-50"
             />
 
             <div className="relative">
@@ -118,12 +129,14 @@ export default function Signup() {
                 placeholder="Enter at least 8+ characters"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400"
+                disabled={loading}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={togglePassword}
-                className="absolute top-3.5 right-3 text-gray-600 text-sm"
+                disabled={loading}
+                className="absolute top-3.5 right-3 text-gray-600 text-sm disabled:opacity-50"
               >
                 {showPassword ? "👁️" : "🙈"}
               </button>
@@ -136,11 +149,12 @@ export default function Signup() {
               placeholder="Confirm password"
               value={formData.confirmPassword}
               onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400"
+              disabled={loading}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 disabled:opacity-50"
             />
 
             <div className="flex items-start gap-2">
-              <input type="checkbox" required className="accent-purple-500 mt-1" />
+              <input type="checkbox" required className="accent-purple-500 mt-1" disabled={loading} />
               <label className="text-sm text-gray-600">
                 By signing up, I agree to the{" "}
                 <a href="/terms" className="text-orange-600 underline hover:text-orange-800">
@@ -149,11 +163,14 @@ export default function Signup() {
               </label>
             </div>
 
+            {error && <div className="text-red-500 text-sm">{error}</div>}
+
             <button
               type="submit"
-              className="w-full bg-orange-500 text-white font-semibold py-3 rounded-lg hover:bg-orange-600 transition"
+              disabled={loading}
+              className="w-full bg-orange-500 text-white font-semibold py-3 rounded-lg hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Create an Account
+              {loading ? "Creating Account..." : "Create an Account"}
             </button>
           </form>
         </div>

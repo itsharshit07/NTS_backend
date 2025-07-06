@@ -1,7 +1,8 @@
 // LandingPage.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { useUser, useClerk } from '@clerk/clerk-react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './firebase';
 import { FiLogOut } from 'react-icons/fi';
 
 // Dynamic styling for active nav links
@@ -14,13 +15,26 @@ const navLinkClass = ({ isActive }) =>
 
 // Navbar Component
 const Navbar = () => {
-  const {user, isSignedIn } = useUser();
-  const { signOut } = useClerk();
+  const [user, setUser] = useState(null);
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsSignedIn(!!currentUser);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
+    try {
+      await signOut(auth);
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (
@@ -55,7 +69,7 @@ const Navbar = () => {
         ) : (
           <>
             <div className="text-base font-medium text-purple-700 hover:text-orange-500 transition-colors duration-300 py-2 px-4 rounded hover:bg-orange-50">
-              Hi, {user?.firstName || 'User'}
+              Hi, {user?.displayName || user?.email || 'User'}
             </div>
             <button
               onClick={handleLogout}

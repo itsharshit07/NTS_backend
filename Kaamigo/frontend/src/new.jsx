@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { useUser, useClerk } from '@clerk/clerk-react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './firebase';
 import { FiLogOut } from 'react-icons/fi';
 
 // Dynamic styling for active nav links
@@ -13,13 +14,26 @@ const navLinkClass = ({ isActive }) =>
 
 // Navbar Component
 const Navbar = () => {
-  const { user, isSignedIn } = useUser();
-  const { signOut } = useClerk();
+  const [user, setUser] = useState(null);
+  const [isSignedIn, setIsSignedIn] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsSignedIn(!!currentUser);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
+    try {
+      await signOut(auth);
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (
@@ -54,7 +68,7 @@ const Navbar = () => {
         ) : (
           <>
             <div className="text-sm text-gray-700 font-medium hidden md:inline">
-              Hi, {user?.firstName || 'User'}
+              Hi, {user?.displayName || user?.email || 'User'}
             </div>
             <button
               onClick={handleLogout}

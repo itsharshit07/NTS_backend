@@ -1,65 +1,79 @@
 import React, { useState, useEffect } from "react";
-import { useSignIn, useUser, useClerk } from "@clerk/clerk-react";
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
+import { auth } from "./firebase";
 import { useNavigate } from "react-router-dom";
-import { FaGoogle, FaFacebookF, FaApple } from "react-icons/fa";
+import { FaGoogle } from "react-icons/fa";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-
-  const { signIn, setActive, isLoaded } = useSignIn();
-  const { isSignedIn } = useUser();
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
-  const { signOut } = useClerk();
 
-  // ✅ Handle redirect callback from Google login
+  // ✅ Monitor authentication state
   useEffect(() => {
-    const handleRedirect = async () => {
-      if (!isLoaded) return;
-
-      try {
-        const result = await signIn.handleRedirectCallback();
-        if (result?.createdSessionId) {
-          await setActive({ session: result.createdSessionId });
-          navigate("/");
-        }
-      } catch (err) {
-        console.error("Redirect login failed:", err);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        navigate("/explore");
       }
-    };
+    });
 
-    handleRedirect();
-  }, [isLoaded, signIn, setActive, navigate]);
-
-  // ✅ Redirect to home if already signed in
-  useEffect(() => {
-    if (isSignedIn) navigate("/");
-  }, [isSignedIn, navigate]);
+    return () => unsubscribe();
+  }, [navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
-    if (!isLoaded) return;
+    setLoading(true);
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      setLoading(false);
+      return;
+    }
 
     try {
-      const result = await signIn.create({ identifier: email, password });
-      await setActive({ session: result.createdSessionId });
-      navigate("/");
+      await signInWithEmailAndPassword(auth, email, password);
+      navigate("/explore");
     } catch (err) {
-      setError("Invalid credentials. Please try again.");
+      console.error("Login error:", err);
+      switch (err.code) {
+        case "auth/user-not-found":
+          setError("No account found with this email");
+          break;
+        case "auth/wrong-password":
+          setError("Incorrect password");
+          break;
+        case "auth/invalid-email":
+          setError("Invalid email address");
+          break;
+        case "auth/user-disabled":
+          setError("This account has been disabled");
+          break;
+        default:
+          setError("Login failed. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSocialLogin = async (provider) => {
+  const handleSocialLogin = async () => {
+    setError("");
+    setLoading(true);
     try {
-      await signIn.authenticateWithRedirect({
-        strategy: `oauth_${provider}`,
-        redirectUrl: "/login", // must match route
-      });
+      const authProvider = new GoogleAuthProvider();
+      await signInWithPopup(auth, authProvider);
+      navigate("/explore");
     } catch (err) {
       console.error("Social login failed:", err);
+      setError("Social login failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -74,9 +88,10 @@ export default function LoginPage() {
             <input
               type="email"
               placeholder="example.email@gmail.com"
-              className="w-full p-3 border rounded bg-gray-100 text-sm"
+              className="w-full p-3 border rounded bg-gray-100 text-sm disabled:opacity-50"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
               required
             />
 
@@ -84,22 +99,24 @@ export default function LoginPage() {
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter at least 8+ characters"
-                className="w-full p-3 border rounded bg-gray-100 text-sm"
+                className="w-full p-3 border rounded bg-gray-100 text-sm disabled:opacity-50"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute top-1/2 right-3 transform -translate-y-1/2 text-gray-500 text-sm"
+                disabled={loading}
+                className="absolute top-1/2 right-3 transform -translate-y-1/2 text-gray-500 text-sm disabled:opacity-50"
               >
                 {showPassword ? "👁️" : "🙈"}
               </button>
             </div>
 
             <div className="flex items-center text-xs text-gray-500">
-              <input type="checkbox" required className="mr-2 accent-orange-500" />
+              <input type="checkbox" required className="mr-2 accent-orange-500" disabled={loading} />
               By signing in, I agree with the{" "}
               <a href="#" className="text-orange-500 ml-1 underline">
                 Terms of Use & Privacy Policy
@@ -110,9 +127,10 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-full bg-[#6B5AED] text-white p-3 rounded hover:bg-indigo-700 transition text-sm"
+              disabled={loading}
+              className="w-full bg-[#6B5AED] text-white p-3 rounded hover:bg-indigo-700 transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Login
+              {loading ? "Signing in..." : "Login"}
             </button>
           </form>
 
@@ -120,26 +138,14 @@ export default function LoginPage() {
             <div className="flex-grow border-t" /> OR <div className="flex-grow border-t" />
           </div>
 
-          <div className="flex justify-center gap-4">
-            <button
-              onClick={() => handleSocialLogin("google")}
-              className="bg-gray-100 p-3 rounded-full hover:bg-gray-200"
-            >
-              <FaGoogle className="text-red-500 text-lg" />
-            </button>
-            <button
-              onClick={() => handleSocialLogin("facebook")}
-              className="bg-gray-100 p-3 rounded-full hover:bg-gray-200"
-            >
-              <FaFacebookF className="text-blue-600 text-lg" />
-            </button>
-            <button
-              onClick={() => handleSocialLogin("apple")}
-              className="bg-gray-100 p-3 rounded-full hover:bg-gray-200"
-            >
-              <FaApple className="text-black text-lg" />
-            </button>
-          </div>
+          <button
+            onClick={handleSocialLogin}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 border border-gray-300 p-3 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+          >
+            <FaGoogle className="text-red-500 text-lg" />
+            <span className="text-sm">Sign in with Google</span>
+          </button>
 
           <p className="text-sm text-center mt-6 text-gray-500">
             New user?{" "}
