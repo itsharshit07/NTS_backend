@@ -12,6 +12,7 @@ const ReelModal = ({
   selectedCategory,
   userProfiles,
   onClose,
+  onShare,
 }) => {
   const [isMuted, setIsMuted] = useState(true);
   const [likedReels, setLikedReels] = useState({});
@@ -24,7 +25,9 @@ const ReelModal = ({
   const modalContainerRef = useRef(null);
   const scrollContainerRef = useRef(null);
 
-  const filteredReels = reels.filter(
+  const [updatedReels, setUpdatedReels] = useState(reels);
+  
+  const filteredReels = updatedReels.filter(
     (r) => selectedCategory === "All" || r.category === selectedCategory
   );
 
@@ -159,11 +162,45 @@ const ReelModal = ({
     }
   };
 
-  const handleShareReel = (reelId) => {
+  const handleShareReel = async (reelId) => {
     const url = `${window.location.origin}/explore/reels?id=${reelId}`;
     navigator.clipboard.writeText(url);
     alert("Reel link copied to clipboard!");
+    
+    // Update share count in Firestore
+    try {
+      const reelDocRef = doc(db, "reels", reelId);
+      await updateDoc(reelDocRef, {
+        shares: increment(1),
+      });
+      
+      // Update local state to reflect the share count immediately
+      const updatedReels = filteredReels.map(reel => {
+        if (reel.id === reelId) {
+          return {
+            ...reel,
+            shares: (reel.shares || 0) + 1
+          };
+        }
+        return reel;
+      });
+      
+      // Update the state in the parent component if callback exists
+      if (onShare) {
+        onShare(updatedReels);
+      } else {
+        // Otherwise update local state
+        setUpdatedReels(updatedReels);
+      }
+    } catch (err) {
+      console.error("Failed to update share count in Firestore", err);
+    }
   };
+
+  // Update local reels state when reels prop changes
+  useEffect(() => {
+    setUpdatedReels(reels);
+  }, [reels]);
 
   // Scroll to the current reel when modal opens or currentReelIndex changes
   useEffect(() => {
