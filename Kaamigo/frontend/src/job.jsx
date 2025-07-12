@@ -11,42 +11,41 @@ import {
 } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 import PostGigModal from "./postgig";
+import ApplyGigModal from "./ApplyGigModal"; // ✅ Import apply modal
 
-/* ── helper to detect SpeechRecognition ── */
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
 export default function Jobs() {
-  /* ───────── state ───────── */
   const [showModal, setShowModal] = useState(false);
+  const [applyModalOpen, setApplyModalOpen] = useState(false); // ✅ apply modal toggle
+  const [selectedJobTitle, setSelectedJobTitle] = useState(""); // ✅ selected job
 
-  /* lock scroll while modal open */
   useEffect(() => {
     document.body.style.overflow = showModal ? "hidden" : "auto";
     return () => (document.body.style.overflow = "auto");
   }, [showModal]);
 
-  /* demo gigs data */
-  const [gigs] = useState(
-    Array(12)
-      .fill()
-      .map((_, i) => ({
-        id: i,
-        title: `Job Title #${i + 1}`,
-        location: "XYZ",
-        budgetMin: "XX",
-        budgetMax: "YY",
-        jobType: "Contract",
-        description: "Brief description of the job role and requirements.",
-        postedAt: "3 days ago",
-      }))
-  );
+  const [gigs, setGigs] = useState([
+    {
+      id: 0,
+      title: "Job Title #1",
+      location: "XYZ",
+      budgetMin: "100",
+      budgetMax: "200",
+      jobType: "Contract",
+      description: "Brief description of the job role and requirements.",
+      postedAt: "3 days ago",
+    },
+  ]);
 
-  /* ───────── search state ───────── */
+  const handleAddGig = (newGig) => {
+    setGigs((prev) => [{ id: Date.now(), ...newGig }, ...prev]);
+  };
+
   const [query, setQuery] = useState("");
   const handleTextSearch = (e) => setQuery(e.target.value);
 
-  /* voice search */
   const [listening, setListening] = useState(false);
   const hasMic = Boolean(SpeechRecognition);
 
@@ -65,7 +64,6 @@ export default function Jobs() {
     recog.start();
   };
 
-  /* filter gigs memoized */
   const filteredGigs = useMemo(() => {
     if (!query.trim()) return gigs;
     return gigs.filter((g) =>
@@ -75,12 +73,11 @@ export default function Jobs() {
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-purple-50 to-orange-100 font-[Inter]">
-      {/* ───────── Sidebar ───────── */}
+      {/* Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r shadow-xl p-6 space-y-6 rounded-r-xl">
         <h2 className="text-2xl font-extrabold text-purple-700 mb-6">📍 Kaamigo</h2>
         <nav className="space-y-3">
-          {[
-            { label: "Explore", path: "/explore", icon: <LuLayoutDashboard /> },
+          {[{ label: "Explore", path: "/explore", icon: <LuLayoutDashboard /> },
             { label: "Reels", path: "/explore/reels", icon: <FaVideo /> },
             { label: "Jobs", path: "/explore/jobs", icon: <FaBriefcase /> },
             { label: "Profile", path: "/explore/profile", icon: <FaUserAlt /> },
@@ -106,26 +103,25 @@ export default function Jobs() {
         </nav>
       </aside>
 
-      {/* ───────── Main content ───────── */}
+      {/* Main Content */}
       <main className="flex-1 p-6 space-y-10">
-        {/* header */}
+        {/* Header */}
         <div className="flex flex-wrap lg:justify-between gap-2 mb-8">
           <h2 className="text-3xl font-bold text-orange-500">Jobs Board</h2>
-
           <div className="flex gap-2">
             <button className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-gradient-to-r from-orange-500 to-yellow-500">
-              Browse Jobs
+              Browse Jobs
             </button>
             <button
               onClick={() => setShowModal(true)}
               className="bg-white text-orange-600 px-4 py-2 border border-orange-500 rounded-lg hover:bg-gradient-to-r from-orange-500 to-yellow-500 hover:text-white"
             >
-              Post a Gig
+              Post a Gig
             </button>
           </div>
         </div>
 
-        {/* search + filters */}
+        {/* Search */}
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="relative w-full lg:w-1/3">
             <input
@@ -139,7 +135,6 @@ export default function Jobs() {
               <button
                 type="button"
                 onClick={startVoiceSearch}
-                aria-label="voice search"
                 className={`absolute right-6 top-1/2 -translate-y-1/2 text-purple-600 ${
                   listening ? "animate-pulse" : ""
                 }`}
@@ -149,7 +144,6 @@ export default function Jobs() {
             )}
           </div>
 
-          {/* (filters left as placeholders) */}
           <div className="flex flex-wrap border-y p-3 gap-2 w-full lg:w-2/3">
             <select className="flex-1 min-w-[120px] px-4 py-2 border rounded-lg">
               <option>Category</option>
@@ -166,7 +160,7 @@ export default function Jobs() {
           </div>
         </div>
 
-        {/* job cards */}
+        {/* Job Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredGigs.map((gig) => (
             <div
@@ -175,26 +169,25 @@ export default function Jobs() {
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <img
-                    src="https://via.placeholder.com/50"
-                    alt="Company logo"
-                    className="w-12 h-12 rounded-full"
-                  />
                   <h3 className="font-semibold text-lg">{gig.title}</h3>
                   <p className="text-purple-600 font-bold">
                     ${gig.budgetMin} – ${gig.budgetMax}
                   </p>
                 </div>
                 <p className="text-sm text-orange-500">{gig.jobType}</p>
-                <p className="text-sm text-orange-500">
-                  Location: {gig.location}
-                </p>
+                <p className="text-sm text-orange-500">Location: {gig.location}</p>
                 <p className="text-sm text-gray-700 mt-2">{gig.description}</p>
               </div>
               <div className="flex justify-between items-center pt-2">
                 <p className="text-sm text-gray-400">{gig.postedAt}</p>
-                <button className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600">
-                  Apply Now
+                <button
+                  className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600"
+                  onClick={() => {
+                    setSelectedJobTitle(gig.title);
+                    setApplyModalOpen(true);
+                  }}
+                >
+                  Apply Now
                 </button>
               </div>
             </div>
@@ -206,7 +199,7 @@ export default function Jobs() {
           )}
         </div>
 
-        {/* subscribe box */}
+        {/* Subscribe */}
         <div className="mt-12 bg-gradient-to-r from-indigo-100 via-purple-100 to-violet-200 p-6 rounded-lg text-center shadow">
           <h3 className="font-bold text-lg mb-2">Kaamigo</h3>
           <p className="text-sm text-gray-600 mb-4">Stay up to date</p>
@@ -222,7 +215,7 @@ export default function Jobs() {
           </div>
         </div>
 
-        {/* scroll to top */}
+        {/* Scroll Button */}
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           className="fixed bottom-4 right-4 bg-orange-600 text-white px-3 py-2 rounded-full shadow hover:bg-gradient-to-r from-orange-400 to-yellow-500 transition duration-300"
@@ -230,8 +223,17 @@ export default function Jobs() {
           Go Back
         </button>
 
-        {/* modal */}
-        <PostGigModal open={showModal} onClose={() => setShowModal(false)} />
+        {/* Modals */}
+        <PostGigModal
+          open={showModal}
+          onClose={() => setShowModal(false)}
+          onGigPosted={handleAddGig}
+        />
+        <ApplyGigModal
+          open={applyModalOpen}
+          onClose={() => setApplyModalOpen(false)}
+          jobTitle={selectedJobTitle}
+        />
       </main>
     </div>
   );

@@ -51,10 +51,24 @@ export default function PostGigModal({ open, onClose, onGigPosted }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     setLoading(true);
-    const newGig = { ...form };
-    onGigPosted && onGigPosted(newGig);
+
+    const newGig = {
+      ...form,
+      postedAt: "Just now",
+    };
+
+    onGigPosted && onGigPosted(newGig); // Pass gig to Jobs.jsx
+
     setTimeout(() => {
       setLoading(false);
+      setForm({
+        title: "",
+        location: "",
+        budgetMin: "",
+        budgetMax: "",
+        jobType: "",
+        description: "",
+      });
       onClose();
     }, 400);
   };
@@ -63,10 +77,7 @@ export default function PostGigModal({ open, onClose, onGigPosted }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div
-        className="relative w-[90%] max-w-md max-h-[85vh] overflow-hidden rounded-2xl bg-white shadow-2xl"
-        /* card */
-      >
+      <div className="relative w-[90%] max-w-md max-h-[85vh] overflow-hidden rounded-2xl bg-white shadow-2xl">
         {/* close */}
         <button
           onClick={onClose}
@@ -82,16 +93,16 @@ export default function PostGigModal({ open, onClose, onGigPosted }) {
           </h2>
         </header>
 
-        {/* accent */}
+        {/* accent line */}
         <div className="relative h-1 w-full overflow-hidden">
           <div className="absolute inset-0 animate-[slide_4s_linear_infinite] bg-gradient-to-r from-purple-600 via-indigo-500 to-blue-500" />
         </div>
 
-        {/* ─── scrollable body ─── */}
+        {/* scrollable form body */}
         <form
           onSubmit={handleSubmit}
           className="p-6 space-y-5 overflow-y-auto"
-          style={{ maxHeight: "calc(85vh - 114px)" }} /* header + btn space */
+          style={{ maxHeight: "calc(85vh - 114px)" }}
         >
           {/* title */}
           <div>
@@ -204,7 +215,7 @@ export default function PostGigModal({ open, onClose, onGigPosted }) {
             />
           </div>
 
-          {/* CTA */}
+          {/* submit button */}
           <button
             type="submit"
             disabled={loading}
@@ -215,7 +226,7 @@ export default function PostGigModal({ open, onClose, onGigPosted }) {
         </form>
       </div>
 
-      {/* animation keyframes */}
+      {/* slide animation keyframes */}
       <style jsx>{`
         @keyframes slide {
           0% {
