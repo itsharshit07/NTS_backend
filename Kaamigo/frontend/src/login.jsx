@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+} from "firebase/auth";
 import { auth } from "./firebase";
 import { useNavigate } from "react-router-dom";
 import { FaGoogle } from "react-icons/fa";
+import { supabase } from "./supabase";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -38,6 +44,14 @@ export default function LoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
+
+      // ✅ Add Supabase sync here
+      await supabase.from("users").upsert({
+        id: auth.currentUser.uid,
+        email: auth.currentUser.email,
+        name: auth.currentUser.displayName || "", // fallback if null
+        photoUrl: auth.currentUser.photoURL || "",
+      });
       navigate("/explore");
     } catch (err) {
       console.error("Login error:", err);
@@ -68,6 +82,14 @@ export default function LoginPage() {
     try {
       const authProvider = new GoogleAuthProvider();
       await signInWithPopup(auth, authProvider);
+
+      // ✅ Add Supabase sync here
+      await supabase.from("users").upsert({
+        id: auth.currentUser.uid,
+        email: auth.currentUser.email,
+        name: auth.currentUser.displayName || "",
+        photoUrl: auth.currentUser.photoURL || "",
+      });
       navigate("/explore");
     } catch (err) {
       console.error("Social login failed:", err);
@@ -116,7 +138,12 @@ export default function LoginPage() {
             </div>
 
             <div className="flex items-center text-xs text-gray-500">
-              <input type="checkbox" required className="mr-2 accent-orange-500" disabled={loading} />
+              <input
+                type="checkbox"
+                required
+                className="mr-2 accent-orange-500"
+                disabled={loading}
+              />
               By signing in, I agree with the{" "}
               <a href="#" className="text-orange-500 ml-1 underline">
                 Terms of Use & Privacy Policy
@@ -135,7 +162,8 @@ export default function LoginPage() {
           </form>
 
           <div className="my-6 flex items-center gap-2 text-gray-400 text-sm">
-            <div className="flex-grow border-t" /> OR <div className="flex-grow border-t" />
+            <div className="flex-grow border-t" /> OR{" "}
+            <div className="flex-grow border-t" />
           </div>
 
           <button
