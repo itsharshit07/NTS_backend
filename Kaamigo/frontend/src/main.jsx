@@ -20,6 +20,7 @@ import Profile from "./profile.jsx";
 import Features from "./feature.jsx";
 import HowItWorks from "./howItWork.jsx";
 import FeatureBtn from "./premium.jsx";
+import PersonalDetails from "./PersonalDetails.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -41,6 +42,7 @@ createRoot(document.getElementById("root")).render(
         <Route path="/explore/features" element={<Features/>} />
         <Route path="/explore/how-it-works" element={<HowItWorks/>} />
         <Route path="/explore/featurebtn" element={<FeatureBtn/>} />
+        <Route path="/dashboard" element={<PersonalDetails/>} />
       </Routes>
     </BrowserRouter>
   </StrictMode>
