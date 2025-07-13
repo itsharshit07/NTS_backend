@@ -13,8 +13,6 @@ export default function PersonalDetails() {
     address: "",
     phone: "",
     skills: "",
-    rating: "",
-    reviews: "",
     projects: "",
   });
   const [error, setError] = useState("");
@@ -40,6 +38,8 @@ export default function PersonalDetails() {
         ...form,
         email: user.email,
         uid: user.uid,
+        rating: 0, // Initialize rating as 0
+        reviews: 0 // Initialize reviews as 0
       });
       navigate("/explore/profile");
     } catch (err) {
@@ -90,28 +90,6 @@ export default function PersonalDetails() {
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400"
         />
         <input
-          name="rating"
-          type="number"
-          step="0.1"
-          min="0"
-          max="5"
-          required
-          placeholder="Rating (e.g. 4.9)"
-          value={form.rating}
-          onChange={handleChange}
-          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400"
-        />
-        <input
-          name="reviews"
-          type="number"
-          min="0"
-          required
-          placeholder="Reviews (e.g. 1200)"
-          value={form.reviews}
-          onChange={handleChange}
-          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400"
-        />
-        <input
           name="projects"
           type="number"
           min="0"
@@ -121,7 +99,6 @@ export default function PersonalDetails() {
           onChange={handleChange}
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400"
         />
-        {/* Add more fields as needed */}
         {error && <div className="text-red-500 text-sm">{error}</div>}
         <button
           type="submit"
@@ -133,4 +110,4 @@ export default function PersonalDetails() {
       </form>
     </div>
   );
-} 
+}
