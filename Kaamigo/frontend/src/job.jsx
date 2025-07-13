@@ -11,39 +11,54 @@ import {
 } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 import PostGigModal from "./postgig";
-import ApplyGigModal from "./ApplyGigModal"; // ✅ Import apply modal
+import ApplyGigModal from "./ApplyGigModal";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { db } from "./firebase";
 
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
 export default function Jobs() {
   const [showModal, setShowModal] = useState(false);
-  const [applyModalOpen, setApplyModalOpen] = useState(false); // ✅ apply modal toggle
-  const [selectedJobTitle, setSelectedJobTitle] = useState(""); // ✅ selected job
+  const [applyModalOpen, setApplyModalOpen] = useState(false);
+  const [selectedJobTitle, setSelectedJobTitle] = useState("");
 
   useEffect(() => {
     document.body.style.overflow = showModal ? "hidden" : "auto";
     return () => (document.body.style.overflow = "auto");
   }, [showModal]);
 
-  const [gigs, setGigs] = useState([
-    {
-      id: 0,
-      title: "Job Title #1",
-      location: "XYZ",
-      budgetMin: "100",
-      budgetMax: "200",
-      jobType: "Contract",
-      description: "Brief description of the job role and requirements.",
-      postedAt: "3 days ago",
-    },
-  ]);
+  const [gigs, setGigs] = useState([]);
+
+  // Fetch jobs from Firebase
+  useEffect(() => {
+    async function fetchJobs() {
+      try {
+        const q = query(collection(db, "jobs"), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        const fetchedGigs = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          category: "General", // Fallback since category isn’t present in your DB
+          ...doc.data(),
+        }));
+        setGigs(fetchedGigs);
+      } catch (error) {
+        console.error("Error fetching jobs:", error);
+      }
+    }
+
+    fetchJobs();
+  }, []);
 
   const handleAddGig = (newGig) => {
     setGigs((prev) => [{ id: Date.now(), ...newGig }, ...prev]);
   };
 
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [budgetFilter, setBudgetFilter] = useState("");
+  const [jobTypeFilter, setJobTypeFilter] = useState("");
+
   const handleTextSearch = (e) => setQuery(e.target.value);
 
   const [listening, setListening] = useState(false);
@@ -65,11 +80,22 @@ export default function Jobs() {
   };
 
   const filteredGigs = useMemo(() => {
-    if (!query.trim()) return gigs;
-    return gigs.filter((g) =>
-      g.title.toLowerCase().includes(query.toLowerCase())
-    );
-  }, [query, gigs]);
+    return gigs.filter((g) => {
+      const matchesQuery = g.title?.toLowerCase().includes(query.toLowerCase());
+      const matchesCategory =
+        !categoryFilter || (g.category && g.category === categoryFilter);
+      const matchesJobType = !jobTypeFilter || g.jobType === jobTypeFilter;
+      const matchesBudget =
+        !budgetFilter ||
+        (() => {
+          const [min, max] = budgetFilter.split("-").map(Number);
+          return (
+            parseInt(g.budgetMin) >= min && parseInt(g.budgetMax) <= max
+          );
+        })();
+      return matchesQuery && matchesCategory && matchesJobType && matchesBudget;
+    });
+  }, [query, gigs, categoryFilter, budgetFilter, jobTypeFilter]);
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-purple-50 to-orange-100 font-[Inter]">
@@ -145,17 +171,38 @@ export default function Jobs() {
           </div>
 
           <div className="flex flex-wrap border-y p-3 gap-2 w-full lg:w-2/3">
-            <select className="flex-1 min-w-[120px] px-4 py-2 border rounded-lg">
-              <option>Category</option>
+            <select
+              className="flex-1 min-w-[120px] px-4 py-2 border rounded-lg"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="">Category</option>
+              <option value="Development">Development</option>
+              <option value="Design">Design</option>
+              <option value="Marketing">Marketing</option>
+              <option value="General">General</option>
             </select>
-            <select className="flex-1 min-w-[120px] px-4 py-2 border rounded-lg">
-              <option>Budget</option>
+
+            <select
+              className="flex-1 min-w-[120px] px-4 py-2 border rounded-lg"
+              value={budgetFilter}
+              onChange={(e) => setBudgetFilter(e.target.value)}
+            >
+              <option value="">Budget</option>
+              <option value="0-100">0–100</option>
+              <option value="101-500">101–500</option>
+              <option value="501-1000">501–1000</option>
             </select>
-            <select className="flex-1 min-w-[120px] px-4 py-2 border rounded-lg">
-              <option>Location</option>
-            </select>
-            <select className="flex-1 min-w-[120px] px-4 py-2 bg-gray-50 border rounded-lg">
-              <option>Job Type</option>
+
+            <select
+              className="flex-1 min-w-[120px] px-4 py-2 bg-gray-50 border rounded-lg"
+              value={jobTypeFilter}
+              onChange={(e) => setJobTypeFilter(e.target.value)}
+            >
+              <option value="">Job Type</option>
+              <option value="Full Time">Full Time</option>
+              <option value="Part Time">Part Time</option>
+              <option value="Contract">Contract</option>
             </select>
           </div>
         </div>
@@ -179,7 +226,7 @@ export default function Jobs() {
                 <p className="text-sm text-gray-700 mt-2">{gig.description}</p>
               </div>
               <div className="flex justify-between items-center pt-2">
-                <p className="text-sm text-gray-400">{gig.postedAt}</p>
+                <p className="text-sm text-gray-400">{gig.postedAt || "New"}</p>
                 <button
                   className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600"
                   onClick={() => {

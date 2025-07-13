@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { FaMapMarkerAlt } from "react-icons/fa";
-
+import { db } from "./firebase"; // adjust the path as needed
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { getDoc, doc } from "firebase/firestore";
 export default function PostGigModal({ open, onClose, onGigPosted }) {
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -47,31 +49,43 @@ export default function PostGigModal({ open, onClose, onGigPosted }) {
       { enableHighAccuracy: true, timeout: 10000 }
     );
   }
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    const newGig = {
-      ...form,
-      postedAt: "Just now",
-    };
-
-    onGigPosted && onGigPosted(newGig); // Pass gig to Jobs.jsx
-
-    setTimeout(() => {
-      setLoading(false);
-      setForm({
-        title: "",
-        location: "",
-        budgetMin: "",
-        budgetMax: "",
-        jobType: "",
-        description: "",
-      });
-      onClose();
-    }, 400);
+  const newGigData = {
+    ...form,
+    postedAt: "Just now",
+    createdAt: serverTimestamp(),
+    category: "General", // <-- Make sure it's included for filters
   };
+
+  try {
+    const docRef = await addDoc(collection(db, "jobs"), newGigData);
+    
+    // Refetch the full job data from Firestore (with serverTimestamp resolved)
+    const savedDoc = await getDoc(docRef);
+    const savedData = { id: docRef.id, ...savedDoc.data() };
+
+    onGigPosted && onGigPosted(savedData);
+
+    setForm({
+      title: "",
+      location: "",
+      budgetMin: "",
+      budgetMax: "",
+      jobType: "",
+      description: "",
+    });
+    onClose();
+  } catch (error) {
+    alert("Failed to post gig. Try again.");
+    console.error("Firestore Error:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   if (!open) return null;
 
