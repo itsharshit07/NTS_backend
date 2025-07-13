@@ -242,12 +242,16 @@ export default function Profile() {
             <h2 className="font-bold text-lg p-1 text-orange-500">{profile.name || "Name"}</h2>
             <p className="text-sm text-gray-600 p-1">{profile.skills || "Skills"}</p>
             <div className="flex justify-center gap-5 mt-2 text-sm text-gray-500">
-              <div>
-                <span className="block font-bold text-black">{(profile.rating && profile.rating <= 5) ? profile.rating : ""}</span>Rating
-              </div>
-              <div>
-                <span className="block font-bold text-black">{(profile.reviews && profile.rating && profile.rating <= 5) ? profile.reviews : ""}</span>Reviews
-              </div>
+              {profile.rating && (
+                <div>
+                  <span className="block font-bold text-black">{profile.rating.toFixed(1)}</span>Rating
+                </div>
+              )}
+              {profile.reviews && (
+                <div>
+                  <span className="block font-bold text-black">{profile.reviews}</span>Reviews
+                </div>
+              )}
               <div>
                 <span className="block font-bold text-black">{profile.projects || "-"}</span>Projects
               </div>
@@ -299,8 +303,6 @@ export default function Profile() {
                 <div><b>Phone:</b> {profile.phone}</div>
                 <div><b>Skills:</b> {profile.skills}</div>
                 <div><b>Projects:</b> {profile.projects}</div>
-                <div><b>Rating:</b> {(profile.rating && profile.rating <= 5) ? profile.rating : ""}</div>
-                <div><b>Reviews:</b> {(profile.reviews && profile.rating && profile.rating <= 5) ? profile.reviews : ""}</div>
                 <button onClick={() => setEdit(true)} className="bg-purple-500 text-white px-4 py-2 rounded mt-2">Edit</button>
               </div>
             )}
